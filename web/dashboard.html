@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MosendPay — Merchant Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  :root{
+    --ink:#0E1116; --ink-2:#161B22; --ink-3:#1F2630;
+    --line:#2A3340; --line-2:#374151;
+    --gold:#E8B43C; --gold-dim:#A8821F;
+    --green:#3FB97A; --red:#E5604D; --amber:#E0A23C;
+    --text:#E8EAED; --muted:#9AA4B2; --muted-2:#6B7585;
+    --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;font-size:15px;line-height:1.5}
+  a{color:inherit}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  ::selection{background:var(--gold);color:var(--ink)}
+
+  /* shell */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  header.top{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(14,17,22,.85);
+    backdrop-filter:blur(12px);z-index:20}
+  .top-row{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
+  .brand .dot{width:22px;height:22px;border-radius:6px;background:
+    linear-gradient(135deg,var(--gold),var(--gold-dim));display:grid;place-items:center;
+    color:var(--ink);font-weight:800;font-size:13px;font-family:var(--mono)}
+  .brand small{color:var(--muted);font-weight:400;font-size:12px;border-left:1px solid var(--line);
+    padding-left:10px;margin-left:2px}
+  .btn{font:inherit;border:1px solid var(--line-2);background:var(--ink-2);color:var(--text);
+    padding:8px 14px;border-radius:8px;cursor:pointer;transition:.15s;font-size:14px}
+  .btn:hover{border-color:var(--gold-dim);background:var(--ink-3)}
+  .btn.gold{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:600}
+  .btn.gold:hover{filter:brightness(1.06)}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+  .btn.ghost:hover{color:var(--text);background:var(--ink-2)}
+
+  /* auth */
+  .auth{min-height:calc(100vh - 0px);display:grid;place-items:center;padding:40px 20px}
+  .auth-card{width:100%;max-width:400px}
+  .auth-card h1{font-size:26px;letter-spacing:-.02em;margin:0 0 4px}
+  .auth-card p.sub{color:var(--muted);margin:0 0 26px;font-size:14px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;
+    text-transform:uppercase;letter-spacing:.06em}
+  .field input{width:100%;background:var(--ink-2);border:1px solid var(--line);border-radius:9px;
+    padding:11px 13px;color:var(--text);font:inherit;outline:none;transition:.15s}
+  .field input:focus{border-color:var(--gold-dim);box-shadow:0 0 0 3px rgba(232,180,60,.1)}
+  .seg{display:flex;gap:4px;background:var(--ink-2);padding:4px;border-radius:10px;margin-bottom:22px;
+    border:1px solid var(--line)}
+  .seg button{flex:1;border:none;background:transparent;color:var(--muted);padding:8px;border-radius:7px;
+    cursor:pointer;font:inherit;font-size:14px;transition:.15s}
+  .seg button.on{background:var(--ink-3);color:var(--text);box-shadow:0 1px 0 rgba(0,0,0,.3)}
+  .err{color:var(--red);font-size:13px;margin:10px 0 0;min-height:18px}
+
+  /* dashboard */
+  main{padding:32px 0 80px}
+  .eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dim);
+    font-weight:600;font-family:var(--mono)}
+  h2.page{font-size:22px;letter-spacing:-.01em;margin:6px 0 24px;font-weight:600}
+
+  .cards{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-bottom:14px}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+  .card .v{font-family:var(--mono);font-size:30px;margin-top:10px;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums}
+  .card.balance{background:
+    radial-gradient(120% 140% at 100% 0%, rgba(232,180,60,.14), transparent 55%),var(--ink-2);
+    border-color:var(--gold-dim)}
+  .card.balance .v{color:var(--gold)}
+  .card .cur{font-size:15px;color:var(--muted);margin-right:4px}
+  .card .sub{color:var(--muted-2);font-size:12px;margin-top:8px}
+
+  /* table */
+  .panel{background:var(--ink-2);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    margin-top:24px}
+  .panel-h{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;
+    border-bottom:1px solid var(--line)}
+  .panel-h h3{margin:0;font-size:14px;font-weight:600}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-2);
+    font-weight:600;padding:12px 20px;border-bottom:1px solid var(--line)}
+  td{padding:14px 20px;border-bottom:1px solid var(--line);font-size:14px}
+  tr:last-child td{border-bottom:none}
+  tr.row:hover td{background:var(--ink-3)}
+  .amt{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+  th.r{text-align:right}
+  .ref{color:var(--muted);font-family:var(--mono);font-size:13px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 9px;border-radius:999px;
+    font-weight:500;border:1px solid transparent}
+  .chip::before{content:"";width:6px;height:6px;border-radius:50%}
+  .chip.succeeded{color:var(--green);background:rgba(63,185,122,.1)}
+  .chip.succeeded::before{background:var(--green)}
+  .chip.pending,.chip.processing{color:var(--amber);background:rgba(224,162,60,.1)}
+  .chip.pending::before,.chip.processing::before{background:var(--amber)}
+  .chip.failed{color:var(--red);background:rgba(229,96,77,.1)}
+  .chip.failed::before{background:var(--red)}
+  .chip.refunded,.chip.partially_refunded{color:var(--muted);background:rgba(154,164,178,.12)}
+  .chip.refunded::before{background:var(--muted)}
+  .empty{padding:48px 20px;text-align:center;color:var(--muted)}
+  .empty .big{font-size:15px;color:var(--text);margin-bottom:4px}
+
+  /* test panel */
+  .tester{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:18px 20px;
+    border-bottom:1px solid var(--line);align-items:end}
+  @media(max-width:760px){.tester{grid-template-columns:1fr 1fr}}
+  .tester .field{margin:0}
+  .demo-banner{background:rgba(232,180,60,.08);border:1px solid var(--gold-dim);color:var(--gold);
+    font-size:13px;padding:10px 16px;border-radius:10px;margin-bottom:20px;display:flex;
+    align-items:center;gap:8px}
+  .keyline{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--ink);
+    border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px;
+    word-break:break-all}
+  .keyline b{color:var(--gold)}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line-2);
+    border-top-color:var(--gold);border-radius:50%;animation:s .7s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// API base. When served next to the API, same origin. Override via ?api=
+const API = new URLSearchParams(location.search).get('api')
+  || (location.protocol.startsWith('http') ? location.origin : 'http://localhost:4000');
+
+function api(path, { method='GET', token, key, body } = {}) {
+  const headers = { 'content-type':'application/json' };
+  if (token) headers.authorization = 'Bearer ' + token;
+  if (key)   headers.authorization = 'Bearer ' + key;
+  return fetch(API + path, { method, headers, body: body && JSON.stringify(body) })
+    .then(async r => { const d = await r.json().catch(()=>({})); if(!r.ok) throw new Error(d?.error?.message||'request failed'); return d; });
+}
+
+// ── Demo data (used if the API isn't reachable, so the UI always renders) ──
+const DEMO = {
+  stats: { succeededPayments: 38, netVolumeGhs:'12,480.55', feesPaidGhs:'248.10', availableBalanceGhs:'12,480.55' },
+  payments: [
+    { id:'pay_demo1', amount_ghs:'150.00', net_ghs:'147.07', channel:'momo', provider:'mtn', reference:'inv-1001', status:'succeeded', created_at:'2026-06-22 14:02' },
+    { id:'pay_demo2', amount_ghs:'80.00', net_ghs:'0.00', channel:'momo', provider:'mtn', reference:'inv-1002', status:'failed', created_at:'2026-06-22 13:40' },
+    { id:'pay_demo3', amount_ghs:'420.00', net_ghs:'411.81', channel:'card', provider:'card', reference:'inv-1003', status:'succeeded', created_at:'2026-06-22 12:11' },
+    { id:'pay_demo4', amount_ghs:'35.50', net_ghs:'34.81', channel:'momo', provider:'telecel', reference:'inv-1004', status:'pending', created_at:'2026-06-22 11:55' },
+  ],
+};
+
+function Brand(){
+  return <div className="brand"><span className="dot">M</span> MosendPay <small>Merchant</small></div>;
+}
+
+function Auth({ onAuth }){
+  const [mode,setMode]=useState('signup');
+  const [f,setF]=useState({businessName:'',email:'',password:''});
+  const [err,setErr]=useState(''); const [busy,setBusy]=useState(false);
+  const set=(k)=>(e)=>setF(s=>({...s,[k]:e.target.value}));
+
+  async function submit(){
+    setErr(''); setBusy(true);
+    try{
+      if(mode==='signup'){
+        const r=await api('/v1/auth/signup',{method:'POST',body:f});
+        onAuth(r.token, r.apiKey); // pass secret once
+      }else{
+        const r=await api('/v1/auth/login',{method:'POST',body:{email:f.email,password:f.password}});
+        onAuth(r.token, null);
+      }
+    }catch(e){ setErr(e.message + (API.includes('localhost')?' — is the API running on '+API+'?':'')); }
+    finally{ setBusy(false); }
+  }
+
+  return (
+    <div className="auth"><div className="auth-card">
+      <Brand/>
+      <h1 style={{marginTop:28}}>{mode==='signup'?'Create your account':'Welcome back'}</h1>
+      <p className="sub">{mode==='signup'?'Start accepting Mobile Money and cards in minutes.':'Sign in to your merchant dashboard.'}</p>
+      <div className="seg">
+        <button className={mode==='signup'?'on':''} onClick={()=>setMode('signup')}>Sign up</button>
+        <button className={mode==='login'?'on':''} onClick={()=>setMode('login')}>Log in</button>
+      </div>
+      {mode==='signup'&&<div className="field"><label>Business name</label>
+        <input value={f.businessName} onChange={set('businessName')} placeholder="Kofi Electronics"/></div>}
+      <div className="field"><label>Email</label>
+        <input value={f.email} onChange={set('email')} placeholder="you@business.gh" type="email"/></div>
+      <div className="field"><label>Password</label>
+        <input value={f.password} onChange={set('password')} placeholder="••••••••" type="password"
+          onKeyDown={e=>e.key==='Enter'&&submit()}/></div>
+      <button className="btn gold" style={{width:'100%',marginTop:8}} onClick={submit} disabled={busy}>
+        {busy?<span className="spin"/>:(mode==='signup'?'Create account':'Log in')}</button>
+      <div className="err">{err}</div>
+    </div></div>
+  );
+}
+
+function Money({ value, cur='GHS', className='' }){
+  return <span className={className}><span className="cur">{cur}</span>{value}</span>;
+}
+
+function Tester({ apiKey, onDone }){
+  const [a,setA]=useState('150.00');
+  const [msisdn,setMsisdn]=useState('0240000002');
+  const [prov,setProv]=useState('mtn');
+  const [busy,setBusy]=useState(false);
+  const refCount=useRef(1000);
+
+  async function charge(){
+    if(!apiKey){ alert('Your secret key is only shown at signup. Log in again from a fresh signup to test live charges, or use Demo mode.'); return; }
+    setBusy(true);
+    try{
+      await api('/v1/payments',{key:apiKey,method:'POST',body:{
+        amount:Number(a), channel:'momo', provider:prov, msisdn,
+        reference:'ui-'+(++refCount.current)+'-'+Date.now()
+      }});
+      setTimeout(onDone, 1600); // allow mock settlement
+      onDone();
+    }catch(e){ alert(e.message); } finally{ setBusy(false); }
+  }
+  return (
+    <div className="tester">
+      <div className="field"><label>Amount (GHS)</label><input value={a} onChange={e=>setA(e.target.value)}/></div>
+      <div className="field"><label>Payer MoMo</label><input value={msisdn} onChange={e=>setMsisdn(e.target.value)}/></div>
+      <div className="field"><label>Network</label><input value={prov} onChange={e=>setProv(e.target.value)}/></div>
+      <button className="btn gold" onClick={charge} disabled={busy}>{busy?<span className="spin"/>:'Simulate charge'}</button>
+    </div>
+  );
+}
+
+function Dashboard({ token, apiKey, onLogout }){
+  const [stats,setStats]=useState(null);
+  const [rows,setRows]=useState([]);
+  const [demo,setDemo]=useState(false);
+
+  const load=useCallback(async()=>{
+    try{
+      const [s,p]=await Promise.all([
+        api('/v1/dashboard/stats',{token}),
+        api('/v1/dashboard/payments',{token}),
+      ]);
+      setStats(s); setRows(p.data); setDemo(false);
+    }catch(e){ setStats(DEMO.stats); setRows(DEMO.payments); setDemo(true); }
+  },[token]);
+
+  useEffect(()=>{ load(); },[load]);
+
+  return (<>
+    <header className="top"><div className="wrap top-row">
+      <Brand/>
+      <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <button className="btn ghost" onClick={load}>Refresh</button>
+        <button className="btn" onClick={onLogout}>Log out</button>
+      </div>
+    </div></header>
+    <main><div className="wrap">
+      {demo && <div className="demo-banner">● Demo data — the API at {API} isn't reachable. Start it with <code>&nbsp;npm start&nbsp;</code> to go live.</div>}
+      <div className="eyebrow">Overview</div>
+      <h2 className="page">Today at a glance</h2>
+
+      <div className="cards">
+        <div className="card balance">
+          <div className="k">Available balance</div>
+          <div className="v"><Money value={stats?.availableBalanceGhs ?? '—'}/></div>
+          <div className="sub">Settles to your bank on a T+1 schedule</div>
+        </div>
+        <div className="card">
+          <div className="k">Net volume</div>
+          <div className="v"><Money value={stats?.netVolumeGhs ?? '—'}/></div>
+          <div className="sub">{stats?.succeededPayments ?? 0} successful payments</div>
+        </div>
+        <div className="card">
+          <div className="k">Fees paid</div>
+          <div className="v"><Money value={stats?.feesPaidGhs ?? '—'}/></div>
+          <div className="sub">1.95% per successful charge</div>
+        </div>
+      </div>
+
+      {apiKey && <div className="keyline">Your secret key (shown once): <b>{apiKey.secretKey}</b><br/>
+        Public key: {apiKey.publicKey} · Webhook secret: {apiKey.webhookSecret}</div>}
+
+      <div className="panel">
+        <div className="panel-h"><h3>Payments</h3>
+          <span style={{fontSize:12,color:'var(--muted-2)'}}>Most recent first</span></div>
+        {!demo && <Tester apiKey={apiKey} onDone={load}/>}
+        {rows.length===0 ? (
+          <div className="empty"><div className="big">No payments yet</div>
+            Create one with the simulate button above, or POST to /v1/payments with your secret key.</div>
+        ) : (
+          <table>
+            <thead><tr>
+              <th>Reference</th><th>Channel</th><th className="r">Amount</th>
+              <th className="r">Net</th><th>Status</th><th className="r">Created</th>
+            </tr></thead>
+            <tbody>
+              {rows.map(r=>(
+                <tr className="row" key={r.id}>
+                  <td className="ref">{r.reference}</td>
+                  <td>{r.provider?.toUpperCase()||r.channel} · {r.channel}</td>
+                  <td className="amt"><Money value={r.amount_ghs}/></td>
+                  <td className="amt"><Money value={r.net_ghs}/></td>
+                  <td><span className={'chip '+r.status}>{r.status.replace('_',' ')}</span></td>
+                  <td className="amt" style={{color:'var(--muted)'}}>{r.created_at}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div></main>
+  </>);
+}
+
+function App(){
+  const [auth,setAuth]=useState(()=>{
+    // token kept in memory only (no localStorage in this sandbox)
+    return { token:null, apiKey:null };
+  });
+  if(!auth.token) return <Auth onAuth={(token,apiKey)=>setAuth({token,apiKey})}/>;
+  return <Dashboard token={auth.token} apiKey={auth.apiKey} onLogout={()=>setAuth({token:null,apiKey:null})}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

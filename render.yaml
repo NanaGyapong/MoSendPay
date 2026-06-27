@@ -1,0 +1,28 @@
+# Render deployment blueprint for MosendPay.
+# Render reads this file automatically when you create a "Blueprint" from the repo.
+# It provisions a web service with a persistent disk so the SQLite database survives
+# restarts and redeploys.
+
+services:
+  - type: web
+    name: mosendpay
+    runtime: node
+    plan: starter            # starter supports persistent disks; free plan does not
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true   # Render generates a strong random secret
+      - key: PSP_PROVIDER
+        value: mock
+      - key: SQLITE_PATH
+        value: /data/mosendpay.db   # points at the persistent disk mount below
+      - key: MOCK_CALLBACK_DELAY_MS
+        value: "1500"
+    disk:
+      name: mosendpay-data
+      mountPath: /data         # persistent volume; SQLite file lives here
+      sizeGB: 1
