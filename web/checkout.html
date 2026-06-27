@@ -118,6 +118,9 @@ async function pay(){
     });
     const d = await r.json();
     if(!r.ok) throw new Error(d?.error?.message||'Payment failed');
+    // If the server already settled it synchronously, reflect immediately.
+    if(d.status==='succeeded' || d.status==='completed') return renderDone();
+    if(d.status==='failed') return renderFailed();
     renderPending();
     poll();
   }catch(e){ btn.disabled=false; btn.textContent='Try again'; err.textContent=e.message; }
@@ -133,12 +136,13 @@ let tries=0;
 async function poll(){
   tries++;
   try{
-    const r = await fetch(`${API}/v1/checkout/sessions/${sessionId}/status`);
+    const r = await fetch(`${API}/v1/checkout/sessions/${sessionId}/status`,{cache:'no-store'});
     const d = await r.json();
     if(d.status==='completed' || d.paymentStatus==='succeeded') return renderDone();
     if(d.paymentStatus==='failed') return renderFailed();
   }catch(e){}
-  if(tries<20) setTimeout(poll,1200); else renderFailed('timed out');
+  // Be patient: poll for up to ~45s before giving up (remote settlement + latency).
+  if(tries<60) setTimeout(poll, 750); else renderFailed('Still waiting — check your dashboard for the final status.');
 }
 
 function renderDone(){
