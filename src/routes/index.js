@@ -17,6 +17,7 @@ import {
   refreshSession,
 } from '../modules/checkout/checkout.service.js';
 import { assessRisk } from '../modules/fraud/fraud.service.js';
+import { quote as fxQuote, isSupported, fxConfig } from '../modules/fx/fx.service.js';
 import { toPesewas, toGhs, badRequest } from '../lib/util.js';
 import { db } from '../db/index.js';
 
@@ -226,6 +227,35 @@ router.post(
     );
   })
 );
+
+// ── FX / multi-currency ───────────────────────────────────────────────────────
+// Public: get a locked conversion quote (e.g. GBP -> GHS) before paying.
+router.get(
+  '/v1/fx/quote',
+  asyncH(async (req, res) => {
+    const from = String(req.query.from || '').toUpperCase();
+    const to = String(req.query.to || 'GHS').toUpperCase();
+    const amount = Number(req.query.amount);
+    if (!from || !isSupported(from) || !isSupported(to)) {
+      throw badRequest(`unsupported pair ${from}->${to}; supported: ${fxConfig.SUPPORTED.join(', ')}`);
+    }
+    if (!amount || amount <= 0) throw badRequest('amount required (in major units, e.g. 100.00)');
+    const q = fxQuote({ from, to, amountMinor: Math.round(amount * 100) });
+    res.json({
+      from: q.from,
+      to: q.to,
+      source_amount: (q.sourceAmountMinor / 100).toFixed(2),
+      recipient_amount: (q.recipientAmountMinor / 100).toFixed(2),
+      rate: q.rate,
+      mid_rate: q.midRate,
+      spread_bps: q.spreadBps,
+      expires_at: q.expiresAt,
+    });
+  })
+);
+
+// Public: list supported currencies.
+router.get('/v1/fx/currencies', (_req, res) => res.json({ supported: fxConfig.SUPPORTED }));
 
 function serializePayment(p) {
   return {
